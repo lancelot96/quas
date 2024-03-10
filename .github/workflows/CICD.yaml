@@ -1,0 +1,26 @@
+name: CICD
+
+on: [push,pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  all:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+    - name: format
+      run: cargo fmt --check
+    - name: lint
+      run: cargo clippy
+    - name: test
+      run: cargo test
+    - name: build
+      run: cargo build --release
+    - name: release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: target/release/ctf-tools
