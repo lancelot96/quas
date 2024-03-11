@@ -47,11 +47,11 @@ pub enum CliCommand {
         #[arg(short, long)]
         key: Option<String>,
     },
-    KeyboardSteg {
+    KeyTraffic {
         #[arg(short = 'i', long = "in")]
         file: String,
     },
-    MouseSteg {
+    MouseTraffic {
         #[arg(short = 'i', long = "in")]
         file: String,
     },

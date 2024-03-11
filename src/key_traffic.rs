@@ -7,14 +7,14 @@ use tokio::process::Command as Process;
 
 use crate::{error::Error, Command};
 
-static KEY_MAP: Lazy<BTreeMap<(u8, u8), char>> = Lazy::new(KeyboardTrafficSteg::build_key_map);
+static KEY_MAP: Lazy<BTreeMap<(u8, u8), char>> = Lazy::new(KeyTraffic::build_key_map);
 
 #[derive(Debug)]
-pub struct KeyboardTrafficSteg {
+pub struct KeyTraffic {
     file: String,
 }
 
-impl KeyboardTrafficSteg {
+impl KeyTraffic {
     pub fn new(file: String) -> Self {
         Self { file }
     }
@@ -173,7 +173,7 @@ impl KeyboardTrafficSteg {
 }
 
 #[async_trait]
-impl Command for KeyboardTrafficSteg {
+impl Command for KeyTraffic {
     async fn execute(self: Box<Self>) -> Result<()> {
         let packets = Self::packets_from_file(&self.file).await?;
         let traffic = Self::traffic_from_packets(&packets);
@@ -188,12 +188,12 @@ impl Command for KeyboardTrafficSteg {
 
 #[cfg(test)]
 mod tests {
-    use super::KeyboardTrafficSteg;
+    use super::KeyTraffic;
 
     #[test]
     fn test_traffic_from_packets() {
         let packets = "0000090000000000\n0000000000000000\n00000f0000000000\n0000000000000000\n0000040000000000\n0000000000000000\n00000a0000000000\n0000000000000000\n2000000000000000\n20002f0000000000";
-        let traffic = KeyboardTrafficSteg::traffic_from_packets(packets);
+        let traffic = KeyTraffic::traffic_from_packets(packets);
         assert_eq!(
             traffic,
             vec![
@@ -281,7 +281,7 @@ mod tests {
             (1, 0),
             (1, 6),
         ];
-        let steg = KeyboardTrafficSteg::steg_from_traffic(traffic);
+        let steg = KeyTraffic::steg_from_traffic(traffic);
         assert_eq!(steg, "flag{pr355_0nwards_a2fee6e0}");
     }
 }

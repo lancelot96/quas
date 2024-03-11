@@ -15,11 +15,11 @@ use tokio::process::Command as Process;
 use crate::{error::Error, Command};
 
 #[derive(Debug)]
-pub struct MouseTrafficSteg {
+pub struct MouseTraffic {
     file: String,
 }
 
-impl MouseTrafficSteg {
+impl MouseTraffic {
     pub fn new(file: String) -> Self {
         Self { file }
     }
@@ -149,7 +149,7 @@ struct MouseTracesWithBoundary {
 }
 
 #[async_trait]
-impl Command for MouseTrafficSteg {
+impl Command for MouseTraffic {
     async fn execute(self: Box<Self>) -> Result<()> {
         let Self { file } = *self;
 
@@ -163,12 +163,12 @@ impl Command for MouseTrafficSteg {
 
 #[cfg(test)]
 mod tests {
-    use super::{MouseTracesWithBoundary, MouseTrafficSteg};
+    use super::{MouseTracesWithBoundary, MouseTraffic};
 
     #[test]
     fn test_traffic_from_packets() {
         let packets = "683a3135370d0a\n4f4b41598a0b00004a0700000000000000000000b0b4bea6\n0100000000000000\n00ff0000\n0000ff00\n0100060000000000";
-        let traffic = MouseTrafficSteg::traffic_from_packets(&packets);
+        let traffic = MouseTraffic::traffic_from_packets(&packets);
         assert_eq!(traffic, vec![(0, -1, 0), (0, 0, -1)]);
     }
 
@@ -183,7 +183,7 @@ mod tests {
             unclick,
             left,
             right,
-        } = MouseTrafficSteg::steg_from_traffic(traffic);
+        } = MouseTraffic::steg_from_traffic(traffic);
         assert_eq!(x_min, -1);
         assert_eq!(x_max, -1);
         assert_eq!(y_min, 0);
@@ -204,7 +204,7 @@ mod tests {
             unclick,
             left,
             right,
-        } = MouseTrafficSteg::steg_from_traffic(traffic);
+        } = MouseTraffic::steg_from_traffic(traffic);
         assert_eq!(x_min, -1);
         assert_eq!(x_max, -1);
         assert_eq!(y_min, 0);
@@ -225,7 +225,7 @@ mod tests {
             unclick,
             left,
             right,
-        } = MouseTrafficSteg::steg_from_traffic(traffic);
+        } = MouseTraffic::steg_from_traffic(traffic);
         assert_eq!(x_min, -1);
         assert_eq!(x_max, -1);
         assert_eq!(y_min, 0);
@@ -246,7 +246,7 @@ mod tests {
             unclick,
             left,
             right,
-        } = MouseTrafficSteg::steg_from_traffic(traffic);
+        } = MouseTraffic::steg_from_traffic(traffic);
         assert_eq!(x_min, 0);
         assert_eq!(x_max, 1);
         assert_eq!(y_min, 1);

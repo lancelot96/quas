@@ -9,8 +9,8 @@ use crate::{
     base64_steg::Base64Steg,
     behinder::BehinderTrafficAnalyse,
     cli::{Cli, CliCommand},
-    keyboard_steg::KeyboardTrafficSteg,
-    mouse_steg::MouseTrafficSteg,
+    key_traffic::KeyTraffic,
+    mouse_traffic::MouseTraffic,
     png_crc::PngCrc,
     zip_crc::ZipCrc,
 };
@@ -19,8 +19,8 @@ mod base64_steg;
 mod behinder;
 mod cli;
 mod error;
-mod keyboard_steg;
-mod mouse_steg;
+mod key_traffic;
+mod mouse_traffic;
 mod png_crc;
 mod zip_crc;
 
@@ -42,8 +42,8 @@ impl From<CliCommand> for Box<dyn Command> {
             CliCommand::Behinder { file, outdir, key } => {
                 Box::new(BehinderTrafficAnalyse::new(file, outdir, key))
             }
-            CliCommand::KeyboardSteg { file } => Box::new(KeyboardTrafficSteg::new(file)),
-            CliCommand::MouseSteg { file } => Box::new(MouseTrafficSteg::new(file)),
+            CliCommand::KeyTraffic { file } => Box::new(KeyTraffic::new(file)),
+            CliCommand::MouseTraffic { file } => Box::new(MouseTraffic::new(file)),
         }
     }
 }
