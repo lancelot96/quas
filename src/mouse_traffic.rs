@@ -109,7 +109,7 @@ impl MouseTraffic {
             .and_then(|x| x.to_str())
             .map(|x| format!("{}.png", x))
             .unwrap();
-        let root = BitMapBackend::new(&png_path, (1900, 1280)).into_drawing_area();
+        let root = BitMapBackend::new(&png_path, (1920, 1080)).into_drawing_area();
         root.fill(&WHITE)?;
 
         let MouseTracesWithBoundary {

@@ -9,6 +9,8 @@ use crate::{
     base64_steg::Base64Steg,
     behinder::BehinderTrafficAnalyse,
     cli::{Cli, CliCommand},
+    image_steg::ImageSteg,
+    image_util::ImageUtil,
     key_traffic::KeyTraffic,
     mouse_traffic::MouseTraffic,
     png_crc::PngCrc,
@@ -19,6 +21,8 @@ mod base64_steg;
 mod behinder;
 mod cli;
 mod error;
+mod image_steg;
+mod image_util;
 mod key_traffic;
 mod mouse_traffic;
 mod png_crc;
@@ -44,6 +48,29 @@ impl From<CliCommand> for Box<dyn Command> {
             }
             CliCommand::KeyTraffic { file } => Box::new(KeyTraffic::new(file)),
             CliCommand::MouseTraffic { file } => Box::new(MouseTraffic::new(file)),
+            CliCommand::ImageSteg {
+                file,
+                red,
+                green,
+                blue,
+                alpha,
+                format,
+            } => {
+                let mask = [red, green, blue, alpha];
+                Box::new(ImageSteg::new(file, mask, format))
+            }
+            CliCommand::ImageUtil {
+                file,
+                brighten,
+                contrast,
+                fliph,
+                flipv,
+                grayscale,
+                huerotate,
+                invert,
+            } => Box::new(ImageUtil::new(
+                file, brighten, contrast, fliph, flipv, grayscale, huerotate, invert,
+            )),
         }
     }
 }
