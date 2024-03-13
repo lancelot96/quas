@@ -19,6 +19,7 @@ pub struct ImageUtil {
 }
 
 impl ImageUtil {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         file: String,
         brighten: Option<i32>,

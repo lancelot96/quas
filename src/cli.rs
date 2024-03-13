@@ -106,5 +106,6 @@ pub enum Format {
     Aspect,
     Bin,
     Utf8,
+    #[allow(clippy::upper_case_acronyms)]
     RGBA,
 }
