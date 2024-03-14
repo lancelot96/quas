@@ -54,10 +54,17 @@ impl From<CliCommand> for Box<dyn Command> {
                 green,
                 blue,
                 alpha,
+                y_then_x,
+                x_reverse,
+                y_reverse,
+                order,
                 format,
             } => {
                 let mask = [red, green, blue, alpha];
-                Box::new(ImageSteg::new(file, mask, format))
+                let order = order.into();
+                Box::new(ImageSteg::new(
+                    file, mask, y_then_x, x_reverse, y_reverse, order, format,
+                ))
             }
             CliCommand::ImageUtil {
                 file,

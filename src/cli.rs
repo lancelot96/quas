@@ -59,20 +59,32 @@ pub enum CliCommand {
         #[arg(short = 'i', long = "in")]
         file: String,
 
-        #[arg(short, long, default_value_t = 0)]
+        #[arg(short, long, default_value_t = 1)]
         red: u8,
 
-        #[arg(short, long, default_value_t = 0)]
+        #[arg(short, long, default_value_t = 1)]
         green: u8,
 
-        #[arg(short, long, default_value_t = 0)]
+        #[arg(short, long, default_value_t = 1)]
         blue: u8,
 
         #[arg(short, long, default_value_t = 0)]
         alpha: u8,
 
-        #[arg(short, long, value_enum)]
-        format: Format,
+        #[arg(short)]
+        y_then_x: bool,
+
+        #[arg(short = 'X')]
+        x_reverse: bool,
+
+        #[arg(short = 'Y')]
+        y_reverse: bool,
+
+        #[arg(short, long, default_value = "rgb")]
+        order: ImageStegOrder,
+
+        #[arg(short, long, default_value = "aspect")]
+        format: ImageStegFormat,
     },
     ImageUtil {
         #[arg(short = 'i', long = "in")]
@@ -101,8 +113,32 @@ pub enum CliCommand {
     },
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug, ValueEnum)]
-pub enum Format {
+pub enum ImageStegOrder {
+    RGB,
+    RBG,
+    GRB,
+    GBR,
+    BRG,
+    BGR,
+}
+
+impl From<ImageStegOrder> for [u8; 4] {
+    fn from(value: ImageStegOrder) -> Self {
+        match value {
+            ImageStegOrder::RGB => [0, 1, 2, 3],
+            ImageStegOrder::RBG => [0, 2, 1, 3],
+            ImageStegOrder::GRB => [1, 0, 2, 3],
+            ImageStegOrder::GBR => [1, 2, 0, 3],
+            ImageStegOrder::BRG => [2, 0, 1, 3],
+            ImageStegOrder::BGR => [2, 1, 0, 3],
+        }
+    }
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum ImageStegFormat {
     Aspect,
     Bin,
     Utf8,

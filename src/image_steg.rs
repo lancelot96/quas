@@ -7,18 +7,38 @@ use png::{BitDepth, ColorType, Encoder as PngEncoder};
 use tokio::fs::{create_dir_all, write};
 use tracing::instrument;
 
-use crate::{cli::Format, Command};
+use crate::{cli::ImageStegFormat, Command};
 
 #[derive(Debug)]
 pub struct ImageSteg {
     file: String,
     mask: [u8; 4],
-    format: Format,
+    y_then_x: bool,
+    x_reverse: bool,
+    y_reverse: bool,
+    order: [u8; 4],
+    format: ImageStegFormat,
 }
 
 impl ImageSteg {
-    pub fn new(file: String, mask: [u8; 4], format: Format) -> Self {
-        Self { file, mask, format }
+    pub fn new(
+        file: String,
+        mask: [u8; 4],
+        y_then_x: bool,
+        x_reverse: bool,
+        y_reverse: bool,
+        order: [u8; 4],
+        format: ImageStegFormat,
+    ) -> Self {
+        Self {
+            file,
+            mask,
+            y_then_x,
+            x_reverse,
+            y_reverse,
+            order,
+            format,
+        }
     }
 
     fn filter_bits(image: &mut RgbaImage, mask: [u8; 4]) {
@@ -31,22 +51,67 @@ impl ImageSteg {
         });
     }
 
-    // TODO: iterator order
-    fn extract_bits(image: &RgbaImage, mask: [u8; 4]) -> Vec<u8> {
-        image
-            .pixels()
-            .flat_map(|Rgba(rgba)| {
-                rgba.iter()
-                    .zip(mask)
-                    .filter(|&(_, m)| m != 0)
-                    .flat_map(|(x, m)| {
-                        (0..u8::BITS)
-                            .rev()
-                            .filter(move |i| m >> i & 1 == 1)
-                            .map(move |i| x >> i & 1)
-                    })
-            })
+    fn extract_bits_x_first<I1, I2, F, O>(x_iter: I1, y_iter: I2, f: F) -> Vec<u8>
+    where
+        I1: DoubleEndedIterator<Item = u32> + Clone,
+        I2: DoubleEndedIterator<Item = u32> + Clone,
+        O: Iterator<Item = u8>,
+        F: Fn((u32, u32)) -> O,
+    {
+        y_iter
+            .flat_map(|y| x_iter.clone().map(move |x| (x, y)).flat_map(&f))
             .collect()
+    }
+
+    fn extract_bits_y_first<I1, I2, F, O>(x_iter: I1, y_iter: I2, f: F) -> Vec<u8>
+    where
+        I1: DoubleEndedIterator<Item = u32> + Clone,
+        I2: DoubleEndedIterator<Item = u32> + Clone,
+        O: Iterator<Item = u8>,
+        F: Fn((u32, u32)) -> O,
+    {
+        x_iter
+            .flat_map(|x| y_iter.clone().map(move |y| (x, y)).flat_map(&f))
+            .collect()
+    }
+
+    fn extract_bits(
+        image: &RgbaImage,
+        mask: [u8; 4],
+        y_then_x: bool,
+        x_reverse: bool,
+        y_reverse: bool,
+        order: [u8; 4],
+    ) -> Vec<u8> {
+        let f = |(x, y)| {
+            let Rgba(rgba) = image.get_pixel(x, y);
+            order
+                .into_iter()
+                .map(move |x| (rgba[x as usize], mask[x as usize]))
+                .filter(|&(_, m)| m != 0)
+                .flat_map(|(x, m)| {
+                    (0..u8::BITS)
+                        .rev()
+                        .filter(move |i| m >> i & 1 == 1)
+                        .map(move |i| x >> i & 1)
+                })
+        };
+
+        let (width, height) = image.dimensions();
+        match (y_then_x, x_reverse, y_reverse) {
+            (true, true, true) => {
+                Self::extract_bits_y_first((0..width).rev(), (0..height).rev(), f)
+            }
+            (true, true, false) => Self::extract_bits_y_first((0..width).rev(), 0..height, f),
+            (true, false, true) => Self::extract_bits_y_first(0..width, (0..height).rev(), f),
+            (true, false, false) => Self::extract_bits_y_first(0..width, 0..height, f),
+            (false, true, true) => {
+                Self::extract_bits_x_first((0..width).rev(), (0..height).rev(), f)
+            }
+            (false, true, false) => Self::extract_bits_x_first((0..width).rev(), 0..height, f),
+            (false, false, true) => Self::extract_bits_x_first(0..width, (0..height).rev(), f),
+            (false, false, false) => Self::extract_bits_x_first(0..width, 0..height, f),
+        }
     }
 
     fn bits2bytes(bits: &[u8]) -> Vec<u8> {
@@ -70,7 +135,15 @@ impl ImageSteg {
 #[async_trait]
 impl Command for ImageSteg {
     async fn execute(self: Box<Self>) -> Result<()> {
-        let Self { file, mask, format } = *self;
+        let Self {
+            file,
+            mask,
+            y_then_x,
+            x_reverse,
+            y_reverse,
+            order,
+            format,
+        } = *self;
 
         let outdir = PathBuf::from(&file).file_stem().map(PathBuf::from).unwrap();
         if !outdir.is_dir() {
@@ -86,8 +159,8 @@ impl Command for ImageSteg {
         tracing::info!(file, width, height);
 
         match format {
-            Format::Bin => {
-                let bits = Self::extract_bits(&image, mask);
+            ImageStegFormat::Bin => {
+                let bits = Self::extract_bits(&image, mask, y_then_x, x_reverse, y_reverse, order);
                 let bytes = Self::bits2bytes(&bits);
 
                 let file_path = outdir.join(format!("{:?}.bin", mask));
@@ -95,15 +168,15 @@ impl Command for ImageSteg {
 
                 tracing::info!(?file_path);
             }
-            Format::Utf8 => {
-                let bits = Self::extract_bits(&image, mask);
+            ImageStegFormat::Utf8 => {
+                let bits = Self::extract_bits(&image, mask, y_then_x, x_reverse, y_reverse, order);
                 let bytes = Self::bits2bytes(&bits);
                 let utf8 = String::from_utf8_lossy(&bytes);
 
                 let file_path = outdir.join(format!("{:?}.txt", mask));
                 write(file_path, utf8.into_owned()).await?;
             }
-            Format::RGBA => {
+            ImageStegFormat::RGBA => {
                 if mask[3] == 0 {
                     tracing::warn!("Output format rgba with alpha(0), maybe you want alpha 255.");
                 }
@@ -115,10 +188,11 @@ impl Command for ImageSteg {
 
                 tracing::info!(?file_path);
             }
-            Format::Aspect => {
+            ImageStegFormat::Aspect => {
                 let masks = Self::aspect_masks(mask);
                 for mask in masks {
-                    let bits = Self::extract_bits(&image, mask);
+                    let bits =
+                        Self::extract_bits(&image, mask, y_then_x, x_reverse, y_reverse, order);
                     let bytes = Self::bits2bytes(&bits);
                     tracing::debug!(
                         ?mask,
@@ -277,12 +351,14 @@ mod test {
     #[test]
     fn test_extract_bits() -> Result<()> {
         let mask = [0x0f, 0x0f, 0x0f, 0x0f];
+        let (y_then_x, x_reverse, y_reverse) = (false, false, false);
+        let order = [0, 1, 2, 3];
         let image = ImageReader::new(Cursor::new(IMAGE_DATA.clone()))
             .with_guessed_format()?
             .decode()?
             .into_rgba8();
 
-        let bits = ImageSteg::extract_bits(&image, mask);
+        let bits = ImageSteg::extract_bits(&image, mask, y_then_x, x_reverse, y_reverse, order);
         let bytes = ImageSteg::bits2bytes(&bits);
         assert_eq!(bytes, vec![240, 15, 15, 15, 0, 255, 255, 255, 0, 15, 0, 15]);
 
